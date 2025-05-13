@@ -1,0 +1,342 @@
+
+
+
+
+
+
+
+
+import os
+
+
+
+import sys
+
+
+
+import argparse
+
+
+
+from rich.consoleimport Console
+
+
+
+from rich.panelimport Panel
+
+
+
+
+
+
+
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+
+
+
+
+
+
+from core.managerimport PayloadManager
+
+
+
+from core.configimport load_config
+
+
+
+
+
+
+
+console=Console()
+
+
+
+
+
+
+
+defbanner():
+
+
+
+    banner_text="""
+    ╦ ╦╦ ╦╔╦╗╦═╗╔═╗╔═╗  ╦ ╦╔═╗╔═╗╔╦╗
+    ╠═╣╚╦╝ ║║╠╦╝╠═╣╚═╗  ╠═╣║╣ ╠═╣ ║║
+    ╩ ╩ ╩ ═╩╝╩╚═╩ ╩╚═╝  ╩ ╩╚═╝╩ ╩═╩╝
+    Полиморфная система генерации и доставки нагрузки
+    """
+
+
+
+console.pr in t(Panel(banner_text,border_style="red"))
+
+
+
+
+
+
+
+defparse_arguments():
+
+
+
+    parser=argparse.ArgumentParser(description="Hydra's Head - Полиморфная система генерации нагрузки")
+
+
+
+
+
+
+
+subparsers=parser.add_subparsers(dest="command",help="Команды")
+
+
+
+
+
+
+
+
+
+
+
+generate_parser=subparsers.add_parser("generate",help="Сгенерировать нагрузку")
+
+
+
+generate_parser.add_argument("--type","-t",choices=["exe","dll","shellcode","macro","ps1","py","js"],
+
+
+
+required=True,help="Тип нагрузки")
+
+
+
+generate_parser.add_argument("--payload","-p",required=True,help="Полезная нагрузка (команда или путь к файлу)")
+
+
+
+generate_parser.add_argument("--output","-o",required=True,help="Путь к выходному файлу")
+
+
+
+generate_parser.add_argument("--obfuscation",choices=["low","medium","high","max"],
+
+
+
+default="medium",help="Уровень обфускации")
+
+
+
+generate_parser.add_argument("--evas ion",action="store_true",help="Включить техники обхода обнаружения")
+
+
+
+generate_parser.add_argument("--iterations","-i",type=int,default=1,
+
+
+
+help="Количество итераций полиморфизма")
+
+
+
+
+
+
+
+
+
+
+
+template_parser=subparsers.add_parser("template",help="Управление шаблонами")
+
+
+
+template_parser.add_argument("--list",action="store_true",help="Список доступных шаблонов")
+
+
+
+template_parser.add_argument("--add",help="Добавить новый шаблон из файла")
+
+
+
+
+
+
+
+return parser.parse_args()
+
+
+
+
+
+
+
+defmain():
+
+
+
+    banner()
+
+
+
+args=parse_arguments()
+
+
+
+
+
+
+
+if notargs.command:
+
+
+
+        console.pr in t("[bold red]Ошибка:[/bold red] Необходимо указать команду.")
+
+
+
+return1
+
+
+
+
+
+
+
+try:
+
+
+
+        config=load_config()
+
+
+
+manager=PayloadManager(config)
+
+
+
+
+
+
+
+if args.command=="generate":
+
+
+
+            console.pr in t(f"[bold green]Генерация полезной нагрузки типа:[/bold green] {args.type}")
+
+
+
+manager.generate(
+
+
+
+payload_type=args.type,
+
+
+
+payload=args.payload,
+
+
+
+output_path=args.output,
+
+
+
+obfuscation_level=args.obfuscation,
+
+
+
+use_evas ion=args.evas ion,
+
+
+
+iterations=args.iterations
+
+
+
+)
+
+
+
+console.pr in t(f"[bold green]Нагрузка сгенерирована:[/bold green] {args.output}")
+
+
+
+
+
+
+
+elif args.command=="template":
+
+
+
+            if args.list:
+
+
+
+                templates=manager.list_templates()
+
+
+
+console.pr in t("[bold green]Доступные шаблоны:[/bold green]")
+
+
+
+fortemplate in templates:
+
+
+
+                    console.pr in t(f" - {template}")
+
+
+
+elif args.add:
+
+
+
+                manager.add_template(args.add)
+
+
+
+console.pr in t(f"[bold green]Шаблон добавлен:[/bold green] {args.add}")
+
+
+
+
+
+
+
+except Exceptionas e:
+
+
+
+        console.pr in t(f"[bold red]Ошибка:[/bold red] {str(e)}")
+
+
+
+return1
+
+
+
+
+
+
+
+return0
+
+
+
+
+
+
+
+if__name__=="__main__":
+
+
+
+    sys.exit(main())

@@ -1,0 +1,73 @@
+import os
+
+import yaml
+
+from typ in gimport Dict,Any
+
+
+
+CONFIG_FILE=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),'config.yaml')
+
+
+
+defload_config(config_path:str=CONFIG_FILE)->Dict[str,Any]:
+
+    if notos.path.exists(config_path):
+
+        raiseFileNotFoundError(f"Файл конфигурации не найден: {config_path}")
+
+
+
+withopen(config_path,'r',encod in g='utf-8')as f:
+
+        try:
+
+            config=yaml.safe_load(f)
+
+return config
+
+except yaml.YAMLErroras e:
+
+            raiseValueError(f"Ошибка при чтении конфигурации: {str(e)}")
+
+
+
+defget_obfuscation_config(config:Dict[str,Any],level:str)->Dict[str,bool]:
+
+    if levelnot in config['obfuscation']['levels']:
+
+        raiseValueError(f"Неизвестный уровень обфускации: {level}")
+
+
+
+return config['obfuscation']['levels'][level]
+
+
+
+defget_evas ion_techniques(config:Dict[str,Any])->list:
+
+    return config['evas ion']['techniques']
+
+
+
+defget_template_path(config:Dict[str,Any],payload_type:str)->str:
+
+    if payload_typenot in config['payloads']['templates']:
+
+        raiseValueError(f"Неизвестный тип нагрузки: {payload_type}")
+
+
+
+template_path=config['payloads']['templates'][payload_type]
+
+full_path=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),template_path)
+
+
+
+if notos.path.exists(full_path):
+
+        raiseFileNotFoundError(f"Директория шаблонов не найдена: {full_path}")
+
+
+
+return full_path

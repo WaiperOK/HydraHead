@@ -1,0 +1,513 @@
+import os
+
+
+
+import uuid
+
+
+
+import importlib
+
+
+
+from typ in gimport Dict,Any,List,Optional
+
+
+
+
+
+
+
+from core.configimport get_obfuscation_config,get_evas ion_techniques,get_template_path
+
+
+
+
+
+
+
+clas sPayloadManager:
+
+
+
+    def__init__(self,config:Dict[str,Any]):
+
+
+
+        self.config=config
+
+
+
+self.output_dir=os.path.join(
+
+
+
+os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+
+
+
+config['paths']['output']
+
+
+
+)
+
+
+
+
+
+
+
+if notos.path.exists(self.output_dir):
+
+
+
+            os.makedirs(self.output_dir)
+
+
+
+
+
+
+
+defgenerate(self,
+
+
+
+payload_type:str,
+
+
+
+payload:str,
+
+
+
+output_path:str,
+
+
+
+obfuscation_level:str="medium",
+
+
+
+use_evas ion:bool=False,
+
+
+
+iterations:int=1)->str:
+
+
+
+
+
+
+
+
+
+
+
+        obfuscation_config=get_obfuscation_config(self.config,obfuscation_level)
+
+
+
+
+
+
+
+
+
+
+
+generator=self._load_generator(payload_type)
+
+
+
+
+
+
+
+
+
+
+
+obfuscators=self._load_obfuscators(obfuscation_config)
+
+
+
+
+
+
+
+
+
+
+
+evas ion_techniques=self._load_evas ion_techniques()if use_evas ionelse[]
+
+
+
+
+
+
+
+
+
+
+
+template_path=get_template_path(self.config,payload_type)
+
+
+
+
+
+
+
+
+
+
+
+result=generator.generate(
+
+
+
+payload=payload,
+
+
+
+template_path=template_path,
+
+
+
+obfuscators=obfuscators,
+
+
+
+evas ion_techniques=evas ion_techniques,
+
+
+
+iterations=iterations
+
+
+
+)
+
+
+
+
+
+
+
+
+
+
+
+if notos.path.isabs(output_path):
+
+
+
+            output_path=os.path.join(self.output_dir,output_path)
+
+
+
+
+
+
+
+
+
+
+
+os.makedirs(os.path.dirname(output_path),exist_ok=True)
+
+
+
+
+
+
+
+withopen(output_path,'wb')as f:
+
+
+
+            f.write(result)
+
+
+
+
+
+
+
+return output_path
+
+
+
+
+
+
+
+def_load_generator(self,payload_type:str):
+
+
+
+        try:
+
+
+
+            module=import lib.import_module(f'generators.{payload_type}_generator')
+
+
+
+generator_clas s=getattr(module,f'{payload_type.capitalize()}Generator')
+
+
+
+return generator_clas s()
+
+
+
+except(ImportError,AttributeError)as e:
+
+
+
+            raiseImportError(f"Не удалось загрузить генератор для типа {payload_type}: {str(e)}")
+
+
+
+
+
+
+
+def_load_obfuscators(self,obfuscation_config:Dict[str,bool])->List:
+
+
+
+        obfuscators=[]
+
+
+
+
+
+
+
+fortechnique,enabled in obfuscation_config.items():
+
+
+
+            if enabled:
+
+
+
+                try:
+
+
+
+                    module=import lib.import_module(f'obfuscators.{technique}')
+
+
+
+obfuscator_clas s=getattr(module,f'{technique.title().replace("_", "")}Obfuscator')
+
+
+
+obfuscators.append(obfuscator_clas s())
+
+
+
+except(ImportError,AttributeError)as e:
+
+
+
+                    pr in t(f"Предупреждение: Не удалось загрузить обфускатор {technique}: {str(e)}")
+
+
+
+
+
+
+
+return obfuscators
+
+
+
+
+
+
+
+def_load_evas ion_techniques(self)->List:
+
+
+
+        techniques=[]
+
+
+
+available_techniques=get_evas ion_techniques(self.config)
+
+
+
+
+
+
+
+fortechnique in available_techniques:
+
+
+
+            try:
+
+
+
+                module=import lib.import_module(f'evas ion.{technique}')
+
+
+
+technique_clas s=getattr(module,f'{technique.title().replace("_", "")}Technique')
+
+
+
+techniques.append(technique_clas s())
+
+
+
+except(ImportError,AttributeError)as e:
+
+
+
+                pr in t(f"Предупреждение: Не удалось загрузить технику обхода {technique}: {str(e)}")
+
+
+
+
+
+
+
+return techniques
+
+
+
+
+
+
+
+deflist_templates(self)->List[str]:
+
+
+
+        templates_dir=os.path.join(
+
+
+
+os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+
+
+
+self.config['paths']['templates']
+
+
+
+)
+
+
+
+
+
+
+
+if notos.path.exists(templates_dir):
+
+
+
+            return[]
+
+
+
+
+
+
+
+return[dford in os.listdir(templates_dir)
+
+
+
+if os.path.isdir(os.path.join(templates_dir,d))]
+
+
+
+
+
+
+
+defadd_template(self,template_path:str)->None:
+
+
+
+        if notos.path.exists(template_path):
+
+
+
+            raiseFileNotFoundError(f"Шаблон не найден: {template_path}")
+
+
+
+
+
+
+
+template_name=os.path.bas ename(template_path)
+
+
+
+target_dir=os.path.join(
+
+
+
+os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+
+
+
+self.config['paths']['templates'],
+
+
+
+template_name
+
+
+
+)
+
+
+
+
+
+
+
+if notos.path.exists(os.path.dirname(target_dir)):
+
+
+
+            os.makedirs(os.path.dirname(target_dir))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import shutil
+
+
+
+shutil.copytree(template_path,target_dir,dirs_exist_ok=True)

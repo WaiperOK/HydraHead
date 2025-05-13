@@ -1,0 +1,55 @@
+hydra:
+  version: 0.1.0
+  
+paths:
+  templates: ./templates
+  output: ./output
+
+obfuscation:
+  levels:
+    low:
+      string_encoding: true
+      variable_renaming: true
+      dead_code: false
+      control_flow: false
+    medium:
+      string_encoding: true
+      variable_renaming: true
+      dead_code: true
+      control_flow: false
+    high:
+      string_encoding: true
+      variable_renaming: true
+      dead_code: true
+      control_flow: true
+    max:
+      string_encoding: true
+      variable_renaming: true
+      dead_code: true
+      control_flow: true
+      virtualization: true
+
+evasion:
+  techniques:
+    - anti_vm
+    - anti_debug
+    - time_delay
+    - process_check
+    - ip_check
+
+payloads:
+  templates:
+    exe: templates/exe
+    dll: templates/dll
+    shellcode: templates/shellcode
+    macro: templates/macro
+    ps1: templates/ps1
+    py: templates/py
+    js: templates/js
+
+loaders:
+  techniques:
+    - process_hollowing
+    - reflective_loading
+    - dll_injection
+    - memory_module 
